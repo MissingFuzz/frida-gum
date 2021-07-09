@@ -21,6 +21,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdio.h>
 #ifdef HAVE_WINDOWS
 # define VC_EXTRALEAN
 # include <windows.h>
@@ -608,6 +610,81 @@ static gboolean gum_store_thread_exit_match (GumAddress address, gsize size,
 G_DEFINE_TYPE (GumStalker, gum_stalker, G_TYPE_OBJECT)
 
 static gpointer _gum_thread_exit_impl;
+
+/// DEBUG
+static void gum_printf(char *format, ...) {
+
+  va_list ap;
+  char    buffer[4096] = {0};
+  int     ret;
+  int     len;
+
+  va_start(ap, format);
+  ret = vsnprintf(buffer, sizeof(buffer) - 1, format, ap);
+  va_end(ap);
+
+  if (ret < 0) { return; }
+
+  len = strnlen(buffer, sizeof(buffer));
+
+  (void)write(STDERR_FILENO, buffer, len);
+
+}
+
+static void
+gum_disasm (guint8 * code,
+            guint size,
+            const gchar * prefix)
+{
+  csh capstone;
+  cs_err err;
+  cs_insn * insn;
+  size_t count, i;
+
+  err = cs_open (CS_ARCH_X86, CS_MODE_64 | GUM_DEFAULT_CS_ENDIAN, &capstone);
+  g_assert (err == CS_ERR_OK);
+
+  count = cs_disasm (capstone, code, size, GPOINTER_TO_SIZE (code), 0, &insn);
+  g_assert (insn != NULL);
+
+  for (i = 0; i != count; i++)
+  {
+    gum_printf ("%s0x%" G_GINT64_MODIFIER "x\t%s %s\n",
+        prefix, insn[i].address, insn[i].mnemonic, insn[i].op_str);
+  }
+
+  cs_free (insn, count);
+
+  cs_close (&capstone);
+}
+
+static void
+gum_hexdump (guint8 * data,
+             guint size,
+             const gchar * prefix)
+{
+  guint i, line_offset;
+
+  line_offset = 0;
+  for (i = 0; i != size; i++)
+  {
+    if (line_offset == 0)
+      gum_printf ("%s0x%" G_GINT64_MODIFIER "x\t%02x",
+          prefix, (guint64) GPOINTER_TO_SIZE (data + i), data[i]);
+    else
+      gum_printf (" %02x", data[i]);
+
+    line_offset++;
+    if (line_offset == 16 && i != size - 1)
+    {
+      gum_printf ("\n");
+      line_offset = 0;
+    }
+  }
+
+  if (line_offset != 0)
+    gum_printf ("\n");
+}
 
 gboolean
 gum_stalker_is_supported (void)
@@ -3360,6 +3437,14 @@ gum_exec_block_commit (GumExecBlock * block)
   gum_slab_reserve (&block->code_slab->slab, block->capacity);
 
   gum_stalker_freeze (stalker, block->code_start, block->code_size);
+
+  gum_printf ("\n*** New block: %p\n", block);
+  // GumDebugSymbolDetails d;
+  // if (gum_symbol_details_from_address (block->real_start, &d))
+  //   gum_printf (" (%s!%s)", d.module_name, d.symbol_name);
+  // gum_printf ("\n");
+  gum_disasm (block->real_start, block->real_size, "[REAL]\t");
+  gum_disasm (block->code_start, block->code_size, "[CODE]\t");
 }
 
 static void
