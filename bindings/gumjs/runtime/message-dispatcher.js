@@ -26,19 +26,20 @@ function MessageDispatcher() {
   function handleMessage(rawMessage, data) {
     const message = JSON.parse(rawMessage);
     if (message instanceof Array && message[0] === 'frida:rpc') {
-      handleRpcMessage(message[1], message[2], message.slice(3));
+      handleRpcMessage(message[1], message[2], message.slice(3), data);
     } else {
       messages.push([message, data]);
       dispatchMessages();
     }
   }
 
-  function handleRpcMessage(id, operation, params) {
+  function handleRpcMessage(id, operation, params, data) {
     const exports = rpc.exports;
 
     if (operation === 'call') {
       const method = params[0];
       const args = params[1];
+      args.push(data);
 
       if (!exports.hasOwnProperty(method)) {
         reply(id, 'error', "unable to find method '" + method + "'");
