@@ -92,30 +92,19 @@ GUMJS_DEFINE_CONSTRUCTOR (gumjs_sampler_construct)
   return _gum_quick_throw_literal (ctx, "not user-instantiable");
 }
 
-static GumQuickSampler *
-gumjs_get_parent_module (GumQuickCore * core)
-{
-  return _gum_quick_core_load_module_data (core, "sampler");
-}
-
-static gboolean
-gum_sampler_get (JSContext * ctx,
-                 JSValueConst val,
-                 GumQuickCore * core,
-                 GumSampler ** sampler)
-{
-  return _gum_quick_unwrap (ctx, val,
-      gumjs_get_parent_module (core)->sampler_class, core,
-      (gpointer *) sampler);
-}
-
 GUMJS_DEFINE_FUNCTION (gumjs_sampler_sample)
 {
   GumSampler * self;
+  GumQuickSampler * parent;
   GumSample sample;
 
-  if (!gum_sampler_get (ctx, this_val, core, &self))
+  parent = _gum_quick_core_load_module_data (core, "sampler");
+
+  if (!_gum_quick_unwrap (ctx, this_val, parent->sampler_class, core,
+      (gpointer) &self))
+  {
     return JS_EXCEPTION;
+  }
 
   sample = gum_sampler_sample (self);
 
@@ -127,7 +116,7 @@ GUMJS_DEFINE_CONSTRUCTOR (gumjs_wallclock_sampler_construct)
   GumQuickSampler * parent;
   GumSampler * sampler;
 
-  parent = gumjs_get_parent_module (core);
+  parent = _gum_quick_core_load_module_data (core, "sampler");
 
   JSValue wrapper = JS_NewObjectClass (ctx, parent->sampler_class);
 

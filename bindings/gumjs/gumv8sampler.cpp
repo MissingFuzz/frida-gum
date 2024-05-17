@@ -72,11 +72,7 @@ _gum_v8_sampler_finalize (GumV8Sampler * self)
 
 GUMJS_DEFINE_CONSTRUCTOR (gumjs_sampler_construct)
 {
-  GumV8Sampler * sampler;
-  if (!_gum_v8_args_parse (args, "X", &sampler))
-    return;
-
-  gum_v8_object_manager_add (&module->objects, wrapper, sampler, module);
+  _gum_v8_throw_ascii_literal (isolate, "not user-instantiable");
 }
 
 GUMJS_DEFINE_CLASS_METHOD (gumjs_sampler_sample, GumSampler)
