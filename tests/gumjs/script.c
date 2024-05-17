@@ -235,6 +235,7 @@ TESTLIST_BEGIN (script)
     TESTENTRY (module_dependencies_can_be_enumerated)
     TESTENTRY (module_base_address_can_be_found)
     TESTENTRY (module_export_can_be_found_by_name)
+    TESTENTRY (wallclock_can_be_sampled)
     TESTENTRY (module_can_be_loaded)
     TESTENTRY (module_can_be_forcibly_initialized)
   TESTGROUP_END ()
@@ -5955,6 +5956,18 @@ TESTCASE (api_resolver_can_be_used_to_find_sections)
   EXPECT_SEND_MESSAGE_WITH ("true");
   EXPECT_SEND_MESSAGE_WITH ("\"number\"");
 #endif
+}
+
+TESTCASE (wallclock_can_be_sampled)
+{
+  COMPILE_AND_LOAD_SCRIPT (
+      "var sampler = new WallClockSampler();"
+      "var a = sampler.sample();"
+      "Thread.sleep(0.05);"
+      "var b = sampler.sample();"
+      "send(b.compare(a) === 1);");
+  EXPECT_SEND_MESSAGE_WITH ("true");
+  EXPECT_NO_MESSAGES ();
 }
 
 TESTCASE (invalid_script_should_return_null)

@@ -35,6 +35,7 @@ if quickjs_dep.found()
     'gumquickmodule.c',
     'gumquickfile.c',
     'gumquickchecksum.c',
+    'gumquicksampler.c',
     'gumquickstream.c',
     'gumquicksocket.c',
     'gumquickinterceptor.c',
