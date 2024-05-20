@@ -7,6 +7,7 @@
 #include "gumv8sampler.h"
 #include "gumsampler.h"
 #include "gumwallclocksampler.h"
+#include "gumusertimesampler.h"
 
 #include "gumv8macros.h"
 #include "gumv8scope.h"
@@ -18,6 +19,7 @@ using namespace v8;
 GUMJS_DECLARE_CONSTRUCTOR (gumjs_sampler_construct)
 GUMJS_DECLARE_FUNCTION (gumjs_sampler_sample)
 GUMJS_DECLARE_CONSTRUCTOR (gumjs_wallclock_sampler_construct)
+GUMJS_DECLARE_CONSTRUCTOR (gumjs_user_time_sampler_construct)
 
 static const GumV8Function gumjs_sampler_functions[] =
 {
@@ -45,6 +47,10 @@ _gum_v8_sampler_init (GumV8Sampler * self,
   auto wallclock_sampler = _gum_v8_create_class ("WallClockSampler",
       gumjs_wallclock_sampler_construct, scope, module, isolate);
   wallclock_sampler->Inherit (sampler);
+
+  auto user_time_sampler = _gum_v8_create_class ("UserTimeSampler",
+      gumjs_user_time_sampler_construct, scope, module, isolate);
+  user_time_sampler->Inherit (sampler);
 }
 
 void
@@ -94,6 +100,27 @@ GUMJS_DEFINE_CONSTRUCTOR (gumjs_wallclock_sampler_construct)
   }
 
   auto sampler = gum_wallclock_sampler_new ();
+
+  gum_v8_object_manager_add (&module->objects, wrapper, sampler, module);
+
+  wrapper->SetAlignedPointerInInternalField (0, sampler);
+}
+
+GUMJS_DEFINE_CONSTRUCTOR (gumjs_user_time_sampler_construct)
+{
+  GumThreadId thread_id = gum_process_get_current_thread_id ();
+
+  if (!info.IsConstructCall ())
+  {
+    _gum_v8_throw_ascii_literal (isolate,
+        "use `new UserTimeSampler()` to create a new instance");
+    return;
+  }
+
+  if (!_gum_v8_args_parse (args, "|Z", &thread_id))
+    return;
+
+  auto sampler = gum_user_time_sampler_new_with_thread_id (thread_id);
 
   gum_v8_object_manager_add (&module->objects, wrapper, sampler, module);
 
