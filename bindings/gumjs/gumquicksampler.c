@@ -5,6 +5,7 @@
  */
 
 #include "gumquicksampler.h"
+#include "gumusertimesampler.h"
 
 #include "gumquickmacros.h"
 
@@ -15,6 +16,7 @@ GUMJS_DECLARE_FUNCTION (gumjs_sampler_sample)
 GUMJS_DECLARE_FINALIZER (gumjs_sampler_finalize)
 
 GUMJS_DECLARE_CONSTRUCTOR (gumjs_wallclock_sampler_construct)
+GUMJS_DECLARE_CONSTRUCTOR (gumjs_user_time_sampler_construct)
 
 static const JSClassDef gumjs_file_def =
 {
@@ -27,9 +29,14 @@ static const JSCFunctionListEntry gumjs_sampler_functions[] =
   JS_CFUNC_DEF ("sample", 0, gumjs_sampler_sample),
 };
 
-static const JSClassDef gumjs_native_wallclock_stream_def =
+static const JSClassDef gumjs_wallclock_sampler_def =
 {
   .class_name = "WallClockSampler",
+};
+
+static const JSClassDef gumjs_user_time_sampler_def =
+{
+  .class_name = "UserTimeSampler",
 };
 
 void
@@ -54,14 +61,23 @@ _gum_quick_sampler_init (GumQuickSampler * self,
   JS_DefinePropertyValueStr (ctx, ns, gumjs_file_def.class_name, ctor,
       JS_PROP_C_W_E);
 
-  _gum_quick_create_subclass (ctx, &gumjs_native_wallclock_stream_def,
+  _gum_quick_create_subclass (ctx, &gumjs_wallclock_sampler_def,
       self->sampler_class, proto, core,
       &self->wallclock_sampler_class, &proto);
   ctor = JS_NewCFunction2 (ctx, gumjs_wallclock_sampler_construct,
-      gumjs_native_wallclock_stream_def.class_name, 0, JS_CFUNC_constructor, 0);
+      gumjs_wallclock_sampler_def.class_name, 0, JS_CFUNC_constructor, 0);
   JS_SetConstructor (ctx, ctor, proto);
   JS_DefinePropertyValueStr (ctx, ns,
-      gumjs_native_wallclock_stream_def.class_name, ctor, JS_PROP_C_W_E);
+      gumjs_wallclock_sampler_def.class_name, ctor, JS_PROP_C_W_E);
+
+  _gum_quick_create_subclass (ctx, &gumjs_user_time_sampler_def,
+      self->sampler_class, proto, core,
+      &self->user_time_sampler_class, &proto);
+  ctor = JS_NewCFunction2 (ctx, gumjs_user_time_sampler_construct,
+      gumjs_user_time_sampler_def.class_name, 0, JS_CFUNC_constructor, 0);
+  JS_SetConstructor (ctx, ctor, proto);
+  JS_DefinePropertyValueStr (ctx, ns,
+      gumjs_user_time_sampler_def.class_name, ctor, JS_PROP_C_W_E);
 
   _gum_quick_object_manager_init (&self->objects, self, core);
 }
@@ -121,6 +137,30 @@ GUMJS_DEFINE_CONSTRUCTOR (gumjs_wallclock_sampler_construct)
   JSValue wrapper = JS_NewObjectClass (ctx, parent->sampler_class);
 
   sampler = gum_wallclock_sampler_new ();
+
+  _gum_quick_object_manager_add (&parent->objects, ctx, wrapper, sampler);
+
+  JS_SetOpaque (wrapper, sampler);
+
+  return wrapper;
+}
+
+GUMJS_DEFINE_CONSTRUCTOR (gumjs_user_time_sampler_construct)
+{
+  GumQuickSampler * parent;
+  GumThreadId thread_id;
+  GumSampler * sampler;
+
+  parent = _gum_quick_core_load_module_data (core, "sampler");
+
+  JSValue wrapper = JS_NewObjectClass (ctx, parent->sampler_class);
+
+  thread_id = gum_process_get_current_thread_id ();
+
+  if (!_gum_quick_args_parse (args, "|Z", &thread_id))
+    return JS_EXCEPTION;
+
+  sampler = gum_user_time_sampler_new_with_thread_id (thread_id);
 
   _gum_quick_object_manager_add (&parent->objects, ctx, wrapper, sampler);
 

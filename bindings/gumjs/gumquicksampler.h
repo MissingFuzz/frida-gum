@@ -19,6 +19,7 @@ struct _GumQuickSampler
 
   JSClassID sampler_class;
   JSClassID wallclock_sampler_class;
+  JSClassID user_time_sampler_class;
 
   GumQuickObjectManager objects;
 };
