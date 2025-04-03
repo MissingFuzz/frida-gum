@@ -94,7 +94,7 @@ typedef struct _GumMipsDebugRegs GumDebugRegs;
 #define MAX_PTHREAD_SIZE 2048
 #define TID_CHECK_TIMES 5
 #define MAX_INSTRUCTION_SIZE 15
-#define THREAD_STACK_SIZE 0x10000
+#define THREAD_STACK_SIZE 0x20000
 #endif
 
 typedef guint GumMipsWatchStyle;
@@ -3002,8 +3002,8 @@ gum_linux_find_list_head (GumLinuxPThreadSpec * spec)
 {
   GumLinuxThreadCtx first;
   GumLinuxThreadCtx second;
-  gboolean created_first;
-  gboolean created_second;
+  gboolean created_first = FALSE;
+  gboolean created_second = FALSE;
   gboolean result = FALSE;
 
   created_first = gum_linux_create_thread (&first, TRUE);
@@ -3182,7 +3182,7 @@ gum_linux_find_tid_offset (GumLinuxPThreadSpec * spec)
   gpointer * candidate_address;
   guint8 * candidate_data;
   gsize bytes_read;
-  GumThreadId value;
+  gint value;
   gboolean match;
   guint matches = 0;
   gboolean found_tid_offset = FALSE;
@@ -3192,20 +3192,20 @@ gum_linux_find_tid_offset (GumLinuxPThreadSpec * spec)
   if (!created_thread)
     goto cleanup;
 
-  for (offset = 0; offset < MAX_PTHREAD_SIZE; offset += sizeof (GumThreadId))
+  for (offset = 0; offset < MAX_PTHREAD_SIZE; offset += sizeof (gint))
   {
     candidate_address = GSIZE_TO_POINTER (ctx.thread) + offset;
 
-    candidate_data = gum_memory_read (candidate_address, sizeof (GumThreadId),
+    candidate_data = gum_memory_read (candidate_address, sizeof (gint),
         &bytes_read);
 
     if (candidate_data == NULL)
       goto cleanup;
 
-    if (bytes_read != sizeof (GumThreadId))
+    if (bytes_read != sizeof (gint))
       goto cleanup;
 
-    value = *((GumThreadId *) candidate_data);
+    value = *((gint *) candidate_data);
 
     if (value == ctx.tid)
     {
@@ -3255,7 +3255,7 @@ gum_linux_check_thread_offset (gsize offset,
   gpointer * tid_addr;
   guint8 * tid_data;
   gsize bytes_read;
-  GumThreadId tid;
+  gint tid;
   gboolean result = FALSE;
 
   created_thread = gum_linux_create_thread (&ctx, TRUE);
@@ -3273,7 +3273,7 @@ gum_linux_check_thread_offset (gsize offset,
   if (bytes_read != sizeof (gint))
     goto cleanup;
 
-  tid = *((GumThreadId *) tid_data);
+  tid = *((gint *) tid_data);
   if (tid == ctx.tid)
     *match = TRUE;
 
